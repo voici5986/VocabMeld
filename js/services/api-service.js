@@ -83,7 +83,7 @@ class ApiService {
 
 ## 规则：
 1. 选择 15-20 个左右有学习价值的词汇
-2. 避免替换：专有名词、人名、地名、品牌名、数字、代码、URL、已经是目标语言的词
+2. 避免替换：专有名词、人名、地名、品牌名、数字、代码、URL、已经是目标语言的词、小于5个字符的英文单词
 3. 优先选择：常用词汇、有学习价值的词汇、不同难度级别的词汇
 4. 翻译方向：从 ${fromLang} 翻译到 ${toLang}
 5. 翻译倾向：结合上下文，夹杂起来也能容易被理解，尽量只翻译成最合适的词汇，而不是多个含义。
@@ -119,7 +119,7 @@ ${filteredText}
     const relevantSentences = sentences.filter(sentence => {
       const lowerSentence = sentence.toLowerCase();
       // 检查英文单词
-      const words = sentence.match(/\b[a-zA-Z]{3,}\b/g) || [];
+      const words = sentence.match(/\b[a-zA-Z]{5,}\b/g) || [];
       const hasEnglishMatch = words.some(word => targetWordSet.has(word.toLowerCase()));
       
       // 检查中文短语（直接检查是否包含目标词汇）
@@ -252,13 +252,18 @@ ${filteredText}
       let allResults = this.parseApiResponse(content);
 
       // 先缓存所有词汇（包括所有难度级别），供不同难度设置的用户使用
-      // 过滤掉2字以下的中文词汇（避免简单词影响语境）
+      // 过滤掉2字以下的中文词汇和小于5个字符的英文单词（避免简单词影响语境）
       const newCacheItems = allResults
         .filter(item => {
           // 对于中文，不存储1个字的内容（即只存储2个字及以上的词汇）
           const isChinese = /[\u4e00-\u9fff]/.test(item.original);
           if (isChinese && item.original.length < 2) {
             return false; // 跳过1个字的中文词汇（只存储2个字及以上的）
+          }
+          // 对于英文，不存储小于5个字符的单词
+          const isEnglish = /^[a-zA-Z]+$/.test(item.original);
+          if (isEnglish && item.original.length < 5) {
+            return false; // 跳过小于5个字符的英文单词
           }
           return true;
         })
@@ -273,10 +278,19 @@ ${filteredText}
       
       await cacheService.setMany(newCacheItems);
       
-      // 本地过滤：只保留符合用户难度设置的词汇
-      const filteredResults = allResults.filter(item =>
-        isDifficultyCompatible(item.difficulty || 'B1', config.difficultyLevel)
-      );
+      // 本地过滤：只保留符合用户难度设置的词汇，并过滤掉小于5个字符的英文单词
+      const filteredResults = allResults.filter(item => {
+        // 过滤难度级别
+        if (!isDifficultyCompatible(item.difficulty || 'B1', config.difficultyLevel)) {
+          return false;
+        }
+        // 过滤小于5个字符的英文单词
+        const isEnglish = /^[a-zA-Z]+$/.test(item.original);
+        if (isEnglish && item.original.length < 5) {
+          return false;
+        }
+        return true;
+      });
 
       // 修正 AI 返回结果的位置（从过滤文本映射回原始文本）
       const correctedResults = filteredResults.map(result => {
@@ -322,7 +336,7 @@ ${filteredText}
    */
   extractWords(text) {
     // 匹配英文单词
-    const englishWords = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
+    const englishWords = text.match(/\b[a-zA-Z]{5,}\b/g) || [];
     
     // 对于中文，提取有意义的短语（2-4个字符）
     // 注意：这里只提取用于缓存检查，实际翻译由AI决定返回哪些词汇

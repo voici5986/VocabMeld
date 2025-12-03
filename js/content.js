@@ -93,7 +93,7 @@
     const relevantSentences = sentences.filter(sentence => {
       const lowerSentence = sentence.toLowerCase();
       // 检查英文单词
-      const words = sentence.match(/\b[a-zA-Z]{3,}\b/g) || [];
+      const words = sentence.match(/\b[a-zA-Z]{5,}\b/g) || [];
       const hasEnglishMatch = words.some(word => targetWordSet.has(word.toLowerCase()));
       
       // 检查中文短语（直接检查是否包含目标词汇）
@@ -550,7 +550,7 @@
     // 检查缓存 - 只检查有意义的词汇（排除常见停用词）
     const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'shall', 'can', 'need', 'dare', 'ought', 'used', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'and', 'but', 'if', 'or', 'because', 'until', 'while', 'this', 'that', 'these', 'those', 'what', 'which', 'who', 'whom', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them', 'my', 'your', 'his', 'its', 'our', 'their']);
     
-    const words = (text.match(/\b[a-zA-Z]{3,}\b/g) || []).filter(w => !stopWords.has(w.toLowerCase()));
+    const words = (text.match(/\b[a-zA-Z]{5,}\b/g) || []).filter(w => !stopWords.has(w.toLowerCase()));
     
     // 对于中文，提取有意义的短语（2-4个字符）
     // 注意：这里只提取用于缓存检查，实际翻译由AI决定返回哪些词汇
@@ -682,9 +682,9 @@
         const prompt = `你是一个语言学习助手。请分析以下文本，选择适合学习的词汇进行翻译。
 
 ## 规则：
-1. 选择约 ${aiTargetCount} 个左右有学习价值的词汇（实际返回数量可以根据文本内容灵活调整，但不要超过 ${maxReplacements * 2} 个）
-2. 避免替换：专有名词、人名、地名、品牌名、数字、代码、URL、已经是目标语言的词
-3. 优先选择：常用词汇、有学习价值的词汇、不同难度级别的词汇
+1. 选择约 ${aiTargetCount} 个词汇（实际返回数量可以根据文本内容灵活调整，但不要超过 ${maxReplacements * 2} 个）
+2. 不要替换：专有名词、人名、地名、品牌名、数字、代码、URL、已经是目标语言的词、小于5个字符的英文单词
+3. 优先选择：有学习价值的词汇、不同难度级别的词汇
 4. 翻译方向：从 ${sourceLang} 翻译到 ${targetLang}
 5. 翻译倾向：结合上下文，夹杂起来也能容易被理解，尽量只翻译成最合适的词汇，而不是多个含义。
 
@@ -742,12 +742,17 @@ ${filteredText}
         }
 
         // 先缓存所有词汇（包括所有难度级别），供不同难度设置的用户使用
-        // 过滤掉2字以下的中文词汇（避免简单词影响语境）
+        // 过滤掉2字以下的中文词汇和小于5个字符的英文单词（避免简单词影响语境）
         for (const item of allResults) {
           // 对于中文，不存储1个字的内容（即只存储2个字及以上的词汇）
           const isChinese = /[\u4e00-\u9fff]/.test(item.original);
           if (isChinese && item.original.length < 2) {
             continue; // 跳过1个字的中文词汇（只存储2个字及以上的）
+          }
+          // 对于英文，不存储小于5个字符的单词
+          const isEnglish = /^[a-zA-Z]+$/.test(item.original);
+          if (isEnglish && item.original.length < 5) {
+            continue; // 跳过小于5个字符的英文单词
           }
           
           const key = `${item.original.toLowerCase()}:${sourceLang}:${targetLang}`;
@@ -772,8 +777,19 @@ ${filteredText}
         // 确保缓存保存完成
         await saveWordCache();
 
-        // 本地过滤：只保留符合用户难度设置的词汇
-        const filteredResults = allResults.filter(item => isDifficultyCompatible(item.difficulty || 'B1', config.difficultyLevel));
+        // 本地过滤：只保留符合用户难度设置的词汇，并过滤掉小于5个字符的英文单词
+        const filteredResults = allResults.filter(item => {
+          // 过滤难度级别
+          if (!isDifficultyCompatible(item.difficulty || 'B1', config.difficultyLevel)) {
+            return false;
+          }
+          // 过滤小于5个字符的英文单词
+          const isEnglish = /^[a-zA-Z]+$/.test(item.original);
+          if (isEnglish && item.original.length < 5) {
+            return false;
+          }
+          return true;
+        });
 
         // 更新统计
         updateStats({ newWords: filteredResults.length, cacheHits: cached.length, cacheMisses: 1 });
@@ -910,7 +926,19 @@ ${uncached.join(', ')}
         }
 
         // 缓存结果（复用统一流程，实现LRU淘汰）
+        // 过滤掉2字以下的中文词汇和小于5个字符的英文单词（避免简单词影响语境）
         for (const item of apiResults) {
+          // 对于中文，不存储1个字的内容（即只存储2个字及以上的词汇）
+          const isChinese = /[\u4e00-\u9fff]/.test(item.original);
+          if (isChinese && item.original.length < 2) {
+            continue; // 跳过1个字的中文词汇（只存储2个字及以上的）
+          }
+          // 对于英文，不存储小于5个字符的单词
+          const isEnglish = /^[a-zA-Z]+$/.test(item.original);
+          if (isEnglish && item.original.length < 5) {
+            continue; // 跳过小于5个字符的英文单词
+          }
+          
           const key = `${item.original.toLowerCase()}:${sourceLang}:${targetLang}`;
           // 如果已存在，先删除（LRU）
           if (wordCache.has(key)) {
@@ -1004,7 +1032,7 @@ ${uncached.join(', ')}
     while (node = walker.nextNode()) {
       const text = node.textContent;
       // 检查文本节点是否包含目标单词（作为完整单词）
-      const words = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
+      const words = text.match(/\b[a-zA-Z]{5,}\b/g) || [];
       const chineseWords = text.match(/[\u4e00-\u9fff]{2,4}/g) || [];
       const allWords = [...words, ...chineseWords];
 
