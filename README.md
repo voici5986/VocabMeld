@@ -251,6 +251,7 @@ LLM 根据以下规则选择替换词汇：
 - 替换强度（较少/适中/较多）
 
 #### 11.3 行为设置
+- **界面主题**：支持深色/浅色两种主题切换
 - 自动处理开关（开启后自动处理新页面）
 - 音标显示开关
 - **翻译显示样式**：三种样式可选
@@ -383,3 +384,9 @@ function isDifficultyCompatible(wordDifficulty, userDifficulty) {
 ### 本地开发
 1. 修改代码后，在 `chrome://extensions/` 页面点击刷新按钮
 2. 或使用扩展开发工具的热重载功能
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=lzskyline/VocabMeld&type=Date)](https://star-history.com/#lzskyline/VocabMeld&Date)

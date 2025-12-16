@@ -3,6 +3,12 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // 加载主题
+  chrome.storage.sync.get('theme', (result) => {
+    const theme = result.theme || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  });
+
   // DOM 元素
   const enableToggle = document.getElementById('enableToggle');
   const toggleLabel = document.getElementById('toggleLabel');
@@ -125,4 +131,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 定期刷新
   setInterval(loadData, 5000);
+
+  // 监听主题变化
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'sync' && changes.theme) {
+      document.documentElement.setAttribute('data-theme', changes.theme.newValue);
+    }
+  });
 });

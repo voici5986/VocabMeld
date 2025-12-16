@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoProcess: document.getElementById('autoProcess'),
     showPhonetic: document.getElementById('showPhonetic'),
     translationStyleRadios: document.querySelectorAll('input[name="translationStyle"]'),
+    themeRadios: document.querySelectorAll('input[name="theme"]'),
 
     // 站点规则
     blacklistInput: document.getElementById('blacklistInput'),
@@ -83,9 +84,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     resetAllBtn: document.getElementById('resetAllBtn')
   };
 
+  // 应用主题
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+
   // 加载配置
   async function loadSettings() {
     chrome.storage.sync.get(null, (result) => {
+      // 主题
+      const theme = result.theme || 'dark';
+      applyTheme(theme);
+      elements.themeRadios.forEach(radio => {
+        radio.checked = radio.value === theme;
+      });
+
       // API 配置
       elements.apiEndpoint.value = result.apiEndpoint || API_PRESETS.deepseek.endpoint;
       elements.apiKey.value = result.apiKey || '';
@@ -331,6 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 保存设置（静默保存）
   async function saveSettings() {
     const settings = {
+      theme: document.querySelector('input[name="theme"]:checked').value,
       apiEndpoint: elements.apiEndpoint.value.trim(),
       apiKey: elements.apiKey.value.trim(),
       modelName: elements.modelName.value.trim(),
@@ -390,6 +404,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     elements.translationStyleRadios.forEach(radio => {
       radio.addEventListener('change', () => debouncedSave(200));
+    });
+
+    // 主题 - 改变时立即应用并保存
+    elements.themeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        applyTheme(radio.value);
+        debouncedSave(200);
+      });
     });
 
     // 开关 - 改变时保存
