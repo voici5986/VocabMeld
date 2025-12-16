@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const themeToggle = document.getElementById('themeToggle');
   const excludeSiteBtn = document.getElementById('excludeSiteBtn');
   const excludeSiteText = document.getElementById('excludeSiteText');
+  const siteModeHint = document.getElementById('siteModeHint');
   const shortcutKey = document.getElementById('shortcutKey');
 
   // 当前快捷键
@@ -154,18 +155,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     chrome.storage.sync.set({ theme });
   });
 
-  // 更新排除按钮状态
-  function updateExcludeBtn(isExcluded) {
-    if (isExcluded) {
-      excludeSiteText.textContent = '已排除';
-      excludeSiteBtn.classList.add('active');
+  // 当前站点模式
+  let currentSiteMode = 'all';
+  const iconExclude = excludeSiteBtn.querySelector('.icon-exclude');
+  const iconInclude = excludeSiteBtn.querySelector('.icon-include');
+
+  // 更新站点按钮状态
+  function updateSiteBtn(isInList, mode) {
+    excludeSiteBtn.classList.remove('active', 'active-success');
+    
+    if (mode === 'all') {
+      // 所有网站模式：显示排除状态（红色叉）
+      iconExclude.style.display = '';
+      iconInclude.style.display = 'none';
+      excludeSiteText.textContent = '排除';
+      if (isInList) {
+        excludeSiteBtn.classList.add('active');
+      }
     } else {
-      excludeSiteText.textContent = '排除站点';
-      excludeSiteBtn.classList.remove('active');
+      // 仅指定网站模式：显示添加状态（绿色勾）
+      iconExclude.style.display = 'none';
+      iconInclude.style.display = '';
+      excludeSiteText.textContent = '添加';
+      if (isInList) {
+        excludeSiteBtn.classList.add('active-success');
+      }
     }
   }
 
-  // 排除当前站点
+  // 站点按钮点击事件
   excludeSiteBtn.addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) return;
@@ -173,20 +191,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const url = new URL(tab.url);
       const hostname = url.hostname;
+      const listKey = currentSiteMode === 'all' ? 'excludedSites' : 'allowedSites';
       
-      chrome.storage.sync.get('excludedSites', (result) => {
-        const sites = result.excludedSites || [];
+      chrome.storage.sync.get(listKey, (result) => {
+        const sites = result[listKey] || [];
         if (sites.includes(hostname)) {
-          // 已排除，移除
+          // 已在列表中，移除
           const newSites = sites.filter(s => s !== hostname);
-          chrome.storage.sync.set({ excludedSites: newSites }, () => {
-            updateExcludeBtn(false);
+          chrome.storage.sync.set({ [listKey]: newSites }, () => {
+            updateSiteBtn(false, currentSiteMode);
           });
         } else {
-          // 添加排除
+          // 添加到列表
           sites.push(hostname);
-          chrome.storage.sync.set({ excludedSites: sites }, () => {
-            updateExcludeBtn(true);
+          chrome.storage.sync.set({ [listKey]: sites }, () => {
+            updateSiteBtn(true, currentSiteMode);
           });
         }
       });
@@ -195,8 +214,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 检查当前站点是否已排除
-  async function checkExcludedStatus() {
+  // 检查当前站点状态
+  async function checkSiteStatus() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) return;
     
@@ -204,10 +223,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const url = new URL(tab.url);
       const hostname = url.hostname;
       
-      chrome.storage.sync.get('excludedSites', (result) => {
-        const sites = result.excludedSites || [];
-        const isExcluded = sites.some(s => hostname.includes(s));
-        updateExcludeBtn(isExcluded);
+      chrome.storage.sync.get(['siteMode', 'excludedSites', 'allowedSites'], (result) => {
+        currentSiteMode = result.siteMode || 'all';
+        // 更新模式提示
+        siteModeHint.textContent = currentSiteMode === 'all' ? '所有网站' : '仅指定';
+        
+        const listKey = currentSiteMode === 'all' ? 'excludedSites' : 'allowedSites';
+        const sites = result[listKey] || [];
+        const isInList = sites.some(s => hostname.includes(s));
+        updateSiteBtn(isInList, currentSiteMode);
       });
     } catch (e) {}
   }
@@ -215,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 初始加载
   loadData();
   loadShortcut();
-  checkExcludedStatus();
+  checkSiteStatus();
 
   // 定期刷新
   setInterval(loadData, 5000);

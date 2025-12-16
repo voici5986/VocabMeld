@@ -130,7 +130,9 @@
           translationStyle: result.translationStyle || 'translation-original',
           theme: result.theme || 'dark',
           enabled: result.enabled ?? true,
+          siteMode: result.siteMode || 'all',
           excludedSites: result.excludedSites || result.blacklist || [],
+          allowedSites: result.allowedSites || [],
           learnedWords: result.learnedWords || [],
           memorizeList: result.memorizeList || []
         };
@@ -1143,10 +1145,18 @@ ${uncached.join(', ')}
     if (isProcessing) return { processed: 0, skipped: true };
     if (!config?.enabled) return { processed: 0, disabled: true };
 
-    // 检查排除站点
+    // 检查站点规则
     const hostname = window.location.hostname;
-    if (config.excludedSites?.some(domain => hostname.includes(domain))) {
-      return { processed: 0, excluded: true };
+    if (config.siteMode === 'all') {
+      // 所有网站模式：检查是否在排除列表中
+      if (config.excludedSites?.some(domain => hostname.includes(domain))) {
+        return { processed: 0, excluded: true };
+      }
+    } else {
+      // 仅指定网站模式：检查是否在允许列表中
+      if (!config.allowedSites?.some(domain => hostname.includes(domain))) {
+        return { processed: 0, excluded: true };
+      }
     }
 
     // 确保缓存已加载

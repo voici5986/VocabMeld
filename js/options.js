@@ -64,7 +64,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     testVoiceBtn: document.getElementById('testVoiceBtn'),
 
     // 站点规则
+    siteModeRadios: document.querySelectorAll('input[name="siteMode"]'),
+    excludedSitesGroup: document.getElementById('excludedSitesGroup'),
     excludedSitesInput: document.getElementById('excludedSitesInput'),
+    allowedSitesGroup: document.getElementById('allowedSitesGroup'),
+    allowedSitesInput: document.getElementById('allowedSitesInput'),
 
     // 词汇管理
     wordTabs: document.querySelectorAll('.word-tab'),
@@ -100,6 +104,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 应用主题
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
+  }
+
+  // 更新站点列表显示
+  function updateSiteListVisibility(mode) {
+    if (mode === 'all') {
+      elements.excludedSitesGroup.style.display = 'block';
+      elements.allowedSitesGroup.style.display = 'none';
+    } else {
+      elements.excludedSitesGroup.style.display = 'none';
+      elements.allowedSitesGroup.style.display = 'block';
+    }
   }
 
   // 加载可用声音列表（只显示学习语言相关的声音）
@@ -382,7 +397,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
       
       // 站点规则
+      const siteMode = result.siteMode || 'all';
+      elements.siteModeRadios.forEach(radio => {
+        radio.checked = radio.value === siteMode;
+      });
+      updateSiteListVisibility(siteMode);
       elements.excludedSitesInput.value = (result.excludedSites || result.blacklist || []).join('\n');
+      elements.allowedSitesInput.value = (result.allowedSites || []).join('\n');
       
       // 发音设置
       elements.ttsRate.value = result.ttsRate || 1.0;
@@ -649,7 +670,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       translationStyle: document.querySelector('input[name="translationStyle"]:checked').value,
       ttsVoice: elements.ttsVoice.value,
       ttsRate: parseFloat(elements.ttsRate.value),
-      excludedSites: elements.excludedSitesInput.value.split('\n').filter(s => s.trim())
+      siteMode: document.querySelector('input[name="siteMode"]:checked').value,
+      excludedSites: elements.excludedSitesInput.value.split('\n').filter(s => s.trim()),
+      allowedSites: elements.allowedSitesInput.value.split('\n').filter(s => s.trim())
     };
 
     try {
@@ -667,7 +690,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       elements.apiEndpoint,
       elements.apiKey,
       elements.modelName,
-      elements.excludedSitesInput
+      elements.excludedSitesInput,
+      elements.allowedSitesInput
     ];
 
     textInputs.forEach(input => {
@@ -681,6 +705,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 缓存上限 - 改变时保存
     elements.cacheMaxSizeRadios.forEach(radio => {
       radio.addEventListener('change', () => debouncedSave(200));
+    });
+    
+    // 站点模式切换
+    elements.siteModeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        updateSiteListVisibility(radio.value);
+        debouncedSave(200);
+      });
     });
     
     // 学习语言改变时，重新加载声音列表

@@ -374,13 +374,45 @@
       <!-- 站点规则 -->
       <section id="sites" class="settings-section">
         <h2>站点规则</h2>
-        <p class="section-desc">设置哪些站点不需要处理</p>
+        <p class="section-desc">控制插件在哪些网站上运行</p>
 
         <div class="form-group">
+          <label>运行模式</label>
+          <p class="help-text">选择插件的运行范围</p>
+          <div class="site-mode-selector">
+            <label class="site-mode-option">
+              <input type="radio" name="siteMode" value="all" checked>
+              <span class="site-mode-card">
+                <span class="site-mode-icon">🌐</span>
+                <span class="site-mode-info">
+                  <span class="site-mode-title">所有网站</span>
+                  <span class="site-mode-desc">在所有网站运行，可排除特定站点</span>
+                </span>
+              </span>
+            </label>
+            <label class="site-mode-option">
+              <input type="radio" name="siteMode" value="whitelist">
+              <span class="site-mode-card">
+                <span class="site-mode-icon">📋</span>
+                <span class="site-mode-info">
+                  <span class="site-mode-title">仅指定网站</span>
+                  <span class="site-mode-desc">只在指定的网站上运行</span>
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group site-list-group" id="excludedSitesGroup">
           <label for="excludedSitesInput">排除站点</label>
-          <p class="help-text">这些站点将不会进行任何处理，每行一个域名（支持部分匹配）</p>
-          <textarea id="excludedSitesInput" placeholder="example.com
-github.com"></textarea>
+          <p class="help-text">这些站点将不会进行任何处理，每行一个（支持部分匹配，如 "github" 匹配所有包含 github 的域名）</p>
+          <textarea id="excludedSitesInput" placeholder="example.com&#10;github.com"></textarea>
+        </div>
+
+        <div class="form-group site-list-group" id="allowedSitesGroup" style="display: none;">
+          <label for="allowedSitesInput">指定站点</label>
+          <p class="help-text">只有这些站点会进行处理，每行一个（支持部分匹配，如 "news" 匹配所有包含 news 的域名）</p>
+          <textarea id="allowedSitesInput" placeholder="news.example.com&#10;blog.example.com"></textarea>
         </div>
       </section>
 
