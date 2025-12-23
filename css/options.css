@@ -816,10 +816,8 @@ input:checked + .toggle-slider:before {
   margin-bottom: 16px;
 }
 
-.word-filters .word-actions {
-  margin-top: 0;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+.filter-box .btn-danger-small {
+  margin-left: auto;
 }
 
 .filter-box label {
@@ -1295,6 +1293,21 @@ input:checked + .toggle-slider:before {
   background: rgba(239, 68, 68, 0.25);
 }
 
+.btn-danger-small {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-danger-small:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
 
 /* Scrollbar */
 ::-webkit-scrollbar {
